@@ -49,14 +49,19 @@ public class DatadogReporter extends AbstractPollingReporter implements
   private static final ObjectMapper mapper = new ObjectMapper(jsonFactory);
   private JsonGenerator jsonOut;
 
+  private String metricPrefix;
+
   public static void enable(long period, TimeUnit unit, String apiKey) {
     enable(period, unit, apiKey, null);
   }
 
   public static void enable(long period, TimeUnit unit, String apiKey,
       String host) {
-    DatadogReporter dd = new DatadogReporter(Metrics.defaultRegistry(), apiKey,
-        host);
+    enable(period, unit, apiKey, host, null);
+  }
+
+  public static void enable(long period, TimeUnit unit, String apiKey, String host, String prefix) {
+    DatadogReporter dd = new DatadogReporter(Metrics.defaultRegistry(), apiKey, host, prefix);
     dd.start(period, unit);
   }
 
@@ -75,18 +80,25 @@ public class DatadogReporter extends AbstractPollingReporter implements
   public DatadogReporter(MetricsRegistry registry, String apiKey, String host) {
     this(registry, MetricPredicate.ALL, VirtualMachineMetrics.getInstance(),
         new HttpTransport("app.datadoghq.com", apiKey), Clock.defaultClock(),
-        host);
+        host, null);
+  }
+
+  public DatadogReporter(MetricsRegistry registry, String apiKey, String host, String prefix) {
+    this(registry, MetricPredicate.ALL, VirtualMachineMetrics.getInstance(),
+            new HttpTransport("app.datadoghq.com", apiKey), Clock.defaultClock(),
+            host, prefix);
   }
 
   public DatadogReporter(MetricsRegistry metricsRegistry,
       MetricPredicate predicate, VirtualMachineMetrics vm, Transport transport,
-      Clock clock, String host) {
+      Clock clock, String host, String prefix) {
     super(metricsRegistry, "datadog-reporter");
     this.vm = vm;
     this.transport = transport;
     this.predicate = predicate;
     this.clock = clock;
     this.host = host;
+    this.metricPrefix = prefix;
   }
 
   @Override
@@ -174,9 +186,12 @@ public class DatadogReporter extends AbstractPollingReporter implements
         .groupedMetrics(predicate).entrySet()) {
       for (Entry<MetricName, Metric> subEntry : entry.getValue().entrySet()) {
         final Metric metric = subEntry.getValue();
+        final MetricName metricName = subEntry.getKey();
+        final MetricName metricNameWithPrefix = new MetricName(withPrefix(metricName.getGroup()),
+                metricName.getType(), metricName.getName(), metricName.getScope());
         if (metric != null) {
           try {
-            metric.processWith(this, subEntry.getKey(), epoch);
+            metric.processWith(this, metricNameWithPrefix, epoch);
           } catch (Exception e) {
             LOG.error("Error pushing metric", e);
           }
@@ -267,6 +282,13 @@ public class DatadogReporter extends AbstractPollingReporter implements
       sb.append('[').append(metricParts[i]);
     }
     return sb.toString();
+  }
+
+  private String withPrefix(String baseName) {
+    if(metricPrefix == null)
+      return baseName;
+    else
+      return metricPrefix + "." + baseName;
   }
 
 }
