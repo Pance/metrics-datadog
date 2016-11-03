@@ -201,31 +201,31 @@ public class DatadogReporter extends AbstractPollingReporter implements
   }
 
   protected void pushVmMetrics(long epoch) {
-    sendGauge("jvm.memory.heap_usage", vm.heapUsage(), epoch);
-    sendGauge("jvm.memory.non_heap_usage", vm.nonHeapUsage(), epoch);
+    sendGauge(withPrefix("jvm.memory.heap_usage"), vm.heapUsage(), epoch);
+    sendGauge(withPrefix("jvm.memory.non_heap_usage"), vm.nonHeapUsage(), epoch);
     for (Entry<String, Double> pool : vm.memoryPoolUsage().entrySet()) {
       String gaugeName = String.format("jvm.memory.memory_pool_usage[pool:%s]",
           pool.getKey());
 
-      sendGauge(gaugeName, pool.getValue(), epoch);
+      sendGauge(withPrefix(gaugeName), pool.getValue(), epoch);
     }
 
-    pushGauge("jvm.daemon_thread_count", vm.daemonThreadCount(), epoch);
-    pushGauge("jvm.thread_count", vm.threadCount(), epoch);
-    pushCounter("jvm.uptime", vm.uptime(), epoch);
-    sendGauge("jvm.fd_usage", vm.fileDescriptorUsage(), epoch);
+    pushGauge(withPrefix("jvm.daemon_thread_count"), vm.daemonThreadCount(), epoch);
+    pushGauge(withPrefix("jvm.thread_count"), vm.threadCount(), epoch);
+    pushCounter(withPrefix("jvm.uptime"), vm.uptime(), epoch);
+    sendGauge(withPrefix("jvm.fd_usage"), vm.fileDescriptorUsage(), epoch);
 
     for (Entry<Thread.State, Double> entry : vm.threadStatePercentages()
         .entrySet()) {
       String gaugeName = String.format("jvm.thread-states[state:%s]",
           entry.getKey());
-      sendGauge(gaugeName, entry.getValue(), epoch);
+      sendGauge(withPrefix(gaugeName), entry.getValue(), epoch);
     }
 
     for (Entry<String, VirtualMachineMetrics.GarbageCollectorStats> entry : vm
         .garbageCollectors().entrySet()) {
-      pushGauge("jvm.gc.time", entry.getValue().getTime(TimeUnit.MILLISECONDS), epoch);
-      pushCounter("jvm.gc.runs", entry.getValue().getRuns(), epoch);
+      pushGauge(withPrefix("jvm.gc.time"), entry.getValue().getTime(TimeUnit.MILLISECONDS), epoch);
+      pushCounter(withPrefix("jvm.gc.runs"), entry.getValue().getRuns(), epoch);
     }
   }
 

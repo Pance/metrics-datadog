@@ -195,5 +195,30 @@ public class DatadogReporterTest {
     points = (List<List<Number>>) gaugeEntry.get("points");
     assertEquals(123, points.get(0).get(1));
   }
+  @Test
+  public void testSendVmMetricsWithPrefix() throws JsonParseException, JsonMappingException,
+          IOException {
+    ddWithPrefix.printVmMetrics = true;
+
+    assertEquals(0, transport.numRequests);
+    ddWithPrefix.run();
+    assertTrue(transport.numRequests > 0);
+
+
+    String body = new String(transport.lastRequest.getPostBody(), "UTF-8");
+    Map<String, Object> request = new ObjectMapper().readValue(body,
+            HashMap.class);
+
+    assertEquals(1, request.keySet().size());
+    List<Object> series = (List<Object>) request.get("series");
+
+    // Iterate through each jvm metric and make sure the name begins with the prefix
+    for(Object entryObject : series) {
+      Map<String, Object> entry = (Map<String, Object>) entryObject;
+      String metricName = (String) entry.get("metric");
+      if(metricName.contains("jvm."))
+        assertTrue(metricName.startsWith("prefix"));
+    }
+  }
 }
 
